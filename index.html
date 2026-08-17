@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your First Monte Carlo — Interactive Law of Large Numbers Demo</title>
+  <meta name="description" content="Flip a coin 10 times or 100,000 times and watch the law of large numbers in action. A training demo showing why Monte Carlo simulation works, built by RootCaws LLC." />
+  <meta name="author" content="RootCaws LLC" />
+  <meta name="robots" content="noindex, follow" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Your First Monte Carlo" />
+  <meta property="og:description" content="Flip a coin 10 times or 100,000 and see why Monte Carlo simulation works. A training demo of the law of large numbers." />
+  <meta property="og:site_name" content="RootCaws LLC" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* Palette lifted from the RootCaws design system */
+    :root{
+      color-scheme:light;
+      --paper:#f7ebed;
+      --paper-2:#f0dee0;
+      --panel:#ffffff;
+      --ink:#3a3336;
+      --ink-2:#4d4548;
+      --muted:#7a7073;
+      --line:#d8c9cc;
+      --soft-line:rgba(58,51,54,0.08);
+      --accent:#8d5860;
+      --accent-2:#c7848d;
+      --accent-soft:#f4dcdf;
+      --chip:rgba(199,132,141,0.14);
+      --amber:#9a6a24;
+      --amber-soft:#f7e9d4;
+      --sage:#4c7359;
+      --sage-soft:#e2eee6;
+      --shadow:0 14px 36px rgba(58,51,54,0.13);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{
+      background:var(--paper);
+      color:var(--ink);
+      font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      -webkit-font-smoothing:antialiased;
+      text-rendering:optimizeLegibility;
+      min-width:320px;
+    }
+    ::selection{background:var(--accent-soft);color:var(--ink)}
+    a{color:inherit}
+    a:hover{opacity:0.82}
+    a:focus-visible,button:focus-visible,input:focus-visible{
+      outline:2px solid var(--accent);outline-offset:3px;border-radius:4px;
+    }
+    input[type=range]{
+      -webkit-appearance:none;appearance:none;width:100%;height:6px;
+      background:var(--paper-2);border:1px solid var(--line);border-radius:999px;
+      outline:none;cursor:pointer;
+    }
+    input[type=range]::-webkit-slider-thumb{
+      -webkit-appearance:none;width:22px;height:22px;background:var(--accent);
+      border-radius:50%;cursor:pointer;border:3px solid var(--panel);
+      box-shadow:0 2px 8px rgba(141,88,96,0.35);
+    }
+    input[type=range]::-moz-range-thumb{
+      width:22px;height:22px;background:var(--accent);border-radius:50%;
+      cursor:pointer;border:3px solid var(--panel);
+      box-shadow:0 2px 8px rgba(141,88,96,0.35);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script>
+  'use strict';
+  const {useState,useCallback,useEffect,useRef,createElement:h}=React;
+
+  const C={
+    bg:"#f7ebed",bgCard:"#ffffff",bgBand:"#f0dee0",
+    border:"#d8c9cc",borderSoft:"rgba(58,51,54,0.08)",
+    text:"#3a3336",textMuted:"#4d4548",textDim:"#7a7073",
+    accent:"#8d5860",accent2:"#c7848d",accentSoft:"#f4dcdf",
+    accentGlow:"rgba(199,132,141,0.15)",
+    amber:"#9a6a24",amberSoft:"#f7e9d4",
+    sage:"#4c7359",sageSoft:"#e2eee6",
+    shadow:"0 14px 36px rgba(58,51,54,0.13)"
+  };
+  const ui="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  const display="'Fraunces', Georgia, serif";
+  const NS=[10,20,50,100,250,500,1000,2500,5000,10000,50000,100000];
+  const TL={0:"10",3:"100",6:"1K",9:"10K",11:"100K"};
+  const REP=200;
+
+  function useIsMobile(bp){const[m,setM]=useState(false);useEffect(()=>{const c=()=>setM(window.innerWidth<(bp||768));c();window.addEventListener("resize",c);return()=>window.removeEventListener("resize",c);},[bp]);return m;}
+
+  // Simulation
+  function gen(n){
+    const pr=new Array(n);let hd=0;
+    for(let i=0;i<n;i++){if(Math.random()<0.5)hd++;pr[i]=hd/(i+1);}
+    const sa=new Array(REP);
+    for(let r=0;r<REP;r++){let h2=0;for(let i=0;i<n;i++){if(Math.random()<0.5)h2++;}sa[r]=h2/n;}
+    sa.sort((a,b)=>a-b);
+    return{proportions:pr,sampling:sa,totalHeads:hd,finalProp:hd/n};
+  }
+
+  function getInsight(n){
+    const se=0.5/Math.sqrt(n),mg=1.96*se*100;
+    if(n<=20){const lo=Math.max(0,50-mg).toFixed(0),hi=Math.min(100,50+mg).toFixed(0);return"At "+n+" flips, 95% of fair-coin runs land somewhere between "+lo+"% and "+hi+"% heads. A window that wide says nothing about the coin.";}
+    if(n<=200)return"At "+n+" flips, a rerun would usually come back within ±"+mg.toFixed(0)+" points of 50%. Wide enough that you could still walk away believing the wrong thing.";
+    if(n<=5000)return"At "+n.toLocaleString()+" flips, the gap between reruns is down to roughly ±"+mg.toFixed(1)+" points. The coin is starting to show through the noise.";
+    return"At "+n.toLocaleString()+" flips, a rerun would move the answer by less than ±"+mg.toFixed(2)+" points. This estimate is done moving.";
+  }
+
+  // ------------------------------------------------------------------
+  // Loss convergence
+  // ------------------------------------------------------------------
+  const BENCHMARKS_URL="./risk-benchmarks.json";
+  const CCY={USD:"$",AUD:"A$",CAD:"C$",GBP:"\u00a3"};
+  // Four rungs and a dozen repeats: enough to show the shape of the problem in
+  // about a second of browser time. A production convergence study would run
+  // far more of both.
+  const LOSS_NS=[100,1000,10000,50000];
+  const LOSS_REPS=12;
+
+  function money(v,c){
+    const s=CCY[c]||((c||"")+" ");
+    if(v>=1e9)return s+(v/1e9).toFixed(1)+"B";
+    if(v>=1e6)return s+(v/1e6).toFixed(1)+"M";
+    if(v>=1e3)return s+Math.round(v/1e3)+"K";
+    return s+Math.round(v);
+  }
+
+  // Same compound-Poisson engine the other risk-lab tools use: a PERT draw for
+  // the annual rate, a Poisson count from it, and an independent PERT magnitude
+  // summed per event.
+  function normalSample(){let u1=0;while(u1===0)u1=Math.random();return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*Math.random());}
+  function gammaSample(a){
+    if(a<1)return gammaSample(a+1)*Math.pow(Math.random(),1/a);
+    const d=a-1/3,c=1/Math.sqrt(9*d);
+    for(;;){let x,v;do{x=normalSample();v=1+c*x;}while(v<=0);v=v*v*v;
+      const u=Math.random();
+      if(u<1-0.0331*x*x*x*x)return d*v;
+      if(Math.log(u)<0.5*x*x+d*(1-v+Math.log(v)))return d*v;}
+  }
+  function pert(min,mode,max){
+    const span=max-min;if(span<=0)return min;
+    const a=1+4*(mode-min)/span,b=1+4*(max-mode)/span;
+    const x=gammaSample(a),y=gammaSample(b);
+    return min+(x/(x+y))*span;
+  }
+  function poisson(l){
+    if(l<=0)return 0;
+    const L=Math.exp(-l);let k=0,p=1;
+    do{k++;p*=Math.random();}while(p>L);
+    return k-1;
+  }
+  function runShard(f,m,n){
+    const out=new Float64Array(n);
+    for(let i=0;i<n;i++){
+      const c=poisson(Math.max(pert(f.min,f.likely,f.max),0));
+      let t=0;for(let e=0;e<c;e++)t+=pert(m.min,m.likely,m.max);
+      out[i]=t;
+    }
+    out.sort();
+    const q=p=>out[Math.min(n-1,Math.floor(p*n))];
+    let sum=0;for(let i=0;i<n;i++)sum+=out[i];
+    return{mean:sum/n,p50:q(0.5),p90:q(0.9),p99:q(0.99)};
+  }
+
+  // How far a statistic moves between identical runs, as a percentage of its
+  // own middle value. This is the number the coin panel reports in points, and
+  // the one nobody reports for a tail.
+  function spread(vals){
+    const s=vals.slice().sort((a,b)=>a-b);
+    const mid=s[Math.floor(s.length/2)];
+    if(!(mid>0))return null;
+    return ((s[s.length-1]-s[0])/mid)*100;
+  }
+
+  function convergence(bm){
+    return LOSS_NS.map(n=>{
+      const runs=[];
+      for(let r=0;r<LOSS_REPS;r++)runs.push(runShard(bm.frequency,bm.impact,n));
+      const pick=k=>runs.map(x=>x[k]);
+      return{n:n,
+        mean:spread(pick("mean")),p50:spread(pick("p50")),
+        p90:spread(pick("p90")),p99:spread(pick("p99")),
+        median:{mean:pick("mean").sort((a,b)=>a-b)[Math.floor(LOSS_REPS/2)],
+                p90:pick("p90").sort((a,b)=>a-b)[Math.floor(LOSS_REPS/2)]}};
+    });
+  }
+
+  // Shared bits
+  const cardStyle=(mb,pad)=>({
+    background:C.bgCard,border:"1px solid "+C.border,borderRadius:16,
+    boxShadow:"0 10px 26px rgba(58,51,54,0.06)",padding:pad||(mb?"16px":"20px 24px")
+  });
+  const eyebrow={fontFamily:ui,fontSize:11,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase"};
+
+  // Acts are labelled, not numbered — the badge that used to carry `n` is gone
+  // and the label takes the act's colour instead.
+  function SLabel({label,color}){
+    return h('div',{style:{display:"flex",alignItems:"center",marginBottom:20}},
+      h('div',{style:Object.assign({},eyebrow,{fontSize:12,letterSpacing:"0.14em",color:color||C.accent})},label));
+  }
+
+  // Running proportion chart
+  function PropChart({data,n,isMobile:mb}){
+    const ref=useRef(null);const[w,setW]=useState(500);
+    // ResizeObserver does not deliver in every embedding context, so measure the
+    // container directly on mount and lean on the resize event the iframe fires.
+    useEffect(()=>{const el=ref.current;if(!el)return;const measure=()=>{const cwv=el.getBoundingClientRect().width;if(cwv>0)setW(cwv);};measure();const raf=requestAnimationFrame(measure);const o=typeof ResizeObserver!=="undefined"?new ResizeObserver(measure):null;if(o)o.observe(el);window.addEventListener("resize",measure);return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",measure);if(o)o.disconnect();};},[]);
+    const ht=mb?200:280,mg={top:16,right:16,bottom:32,left:48},pw=w-mg.left-mg.right,ph=ht-mg.top-mg.bottom;
+    const xS=k=>mg.left+((k-1)/Math.max(1,n-1))*pw,yS=v=>mg.top+(1-v)*ph,fs=mb?8:9;
+    const maxPts=600,pts=[];
+    if(data.length<=maxPts){for(let i=0;i<data.length;i++)pts.push({k:i+1,v:data[i]});}
+    else{const step=(data.length-1)/(maxPts-1);for(let i=0;i<maxPts;i++){const idx=Math.round(i*step);pts.push({k:idx+1,v:data[idx]});}}
+    const lp=pts.map((p,i)=>(i===0?"M":"L")+xS(p.k)+","+yS(p.v)).join(" ");
+    const bPts=300,up=[],lo=[];
+    for(let i=0;i<bPts;i++){const k=Math.max(1,Math.round((i/(bPts-1))*(n-1)+1)),se=0.5/Math.sqrt(k);up.push(xS(k)+","+yS(Math.min(1,0.5+1.96*se)));lo.unshift(xS(k)+","+yS(Math.max(0,0.5-1.96*se)));}
+    const bandD="M "+up.join(" L ")+" L "+lo.join(" L ")+" Z";
+    const yT=[0,0.25,0.5,0.75,1.0];
+    return h('div',{ref,style:{width:"100%"}},
+      h('div',{style:{fontFamily:ui,fontSize:10,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",color:C.textDim,marginBottom:8}},"Proportion of heads after each flip"),
+      h('svg',{width:w,height:ht,style:{display:"block"}},
+        h('path',{d:bandD,fill:C.accent2,opacity:0.22}),
+        ...yT.map(v=>h('g',{key:v},
+          h('line',{x1:mg.left,y1:yS(v),x2:w-mg.right,y2:yS(v),stroke:v===0.5?C.textDim:C.border,strokeWidth:v===0.5?1:0.5,strokeDasharray:v===0.5?"6,4":"2,4"}),
+          h('text',{x:mg.left-8,y:yS(v)+3.5,fill:v===0.5?C.textMuted:C.textDim,fontSize:fs,textAnchor:"end",fontFamily:ui},(v*100).toFixed(0)+"%"))),
+        h('path',{d:lp,fill:"none",stroke:C.accent,strokeWidth:1.5}),
+        h('circle',{cx:xS(n),cy:yS(data[data.length-1]),r:3.5,fill:C.accent}),
+        h('text',{x:w-mg.right,y:yS(0.5)-8,fill:C.textDim,fontSize:fs,textAnchor:"end",fontFamily:ui},"True probability: 50%"),
+        h('text',{x:mg.left+4,y:mg.top+10,fill:C.textDim,fontSize:fs,fontFamily:ui},"Shaded: 95% interval at each flip count"),
+        h('text',{x:mg.left,y:ht-6,fill:C.textDim,fontSize:fs,fontFamily:ui},"Flip 1"),
+        h('text',{x:w-mg.right,y:ht-6,fill:C.textDim,fontSize:fs,fontFamily:ui,textAnchor:"end"},"Flip "+n.toLocaleString())));
+  }
+
+  // Sampling distribution histogram
+  function SampHist({sampling,finalProp,n,isMobile:mb}){
+    const ref=useRef(null);const[w,setW]=useState(500);
+    // ResizeObserver does not deliver in every embedding context, so measure the
+    // container directly on mount and lean on the resize event the iframe fires.
+    useEffect(()=>{const el=ref.current;if(!el)return;const measure=()=>{const cwv=el.getBoundingClientRect().width;if(cwv>0)setW(cwv);};measure();const raf=requestAnimationFrame(measure);const o=typeof ResizeObserver!=="undefined"?new ResizeObserver(measure):null;if(o)o.observe(el);window.addEventListener("resize",measure);return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",measure);if(o)o.disconnect();};},[]);
+    const ht=mb?160:200,mg={top:20,right:16,bottom:32,left:16},pw=w-mg.left-mg.right,ph=ht-mg.top-mg.bottom,fs=mb?8:9;
+    const nb=40,bw=1/nb,bins=Array.from({length:nb},()=>0);
+    for(const v of sampling)bins[Math.min(Math.floor(v/bw),nb-1)]++;
+    const mc=Math.max(...bins),barW=pw/nb,xS=v=>mg.left+v*pw,mx=mg.left+finalProp*pw;
+    return h('div',{ref,style:{width:"100%"}},
+      h('div',{style:{fontFamily:ui,fontSize:10,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",color:C.textDim,marginBottom:8}},REP+" independent experiments at n="+n.toLocaleString()+" — distribution of results"),
+      h('svg',{width:w,height:ht,style:{display:"block"}},
+        ...bins.map((c,i)=>{const bh=mc>0?(c/mc)*ph:0;return h('rect',{key:i,x:mg.left+i*barW,y:mg.top+ph-bh,width:Math.max(barW-1,1),height:bh,fill:C.accent2,opacity:0.85,rx:1});}),
+        h('line',{x1:mx,y1:mg.top,x2:mx,y2:mg.top+ph,stroke:C.text,strokeWidth:2,strokeDasharray:"4,3"}),
+        h('text',{x:mx,y:mg.top-6,fill:C.text,fontSize:fs,textAnchor:"middle",fontFamily:ui,fontWeight:600},"Your run: "+(finalProp*100).toFixed(1)+"%"),
+        h('line',{x1:xS(0.5),y1:mg.top+ph,x2:xS(0.5),y2:mg.top+ph+6,stroke:C.textDim,strokeWidth:1}),
+        h('text',{x:mg.left,y:ht-6,fill:C.textDim,fontSize:fs,fontFamily:ui},"0%"),
+        h('text',{x:xS(0.5),y:ht-6,fill:C.textMuted,fontSize:fs,fontFamily:ui,textAnchor:"middle"},"50%"),
+        h('text',{x:w-mg.right,y:ht-6,fill:C.textDim,fontSize:fs,fontFamily:ui,textAnchor:"end"},"100%")));
+  }
+
+  // The portfolio risk lab renders this page in an iframe and carries the lesson
+  // copy in its own header, so ACT 1 is skipped when we are embedded.
+  const EMBEDDED=(function(){try{return window.self!==window.top;}catch(e){return true;}})();
+
+  // Main App
+  function LossConvergence({mb}){
+    const[list,setList]=useState([]);
+    const[err,setErr]=useState(null);
+    const[sel,setSel]=useState("");
+    const[rows,setRows]=useState(null);
+    const[busy,setBusy]=useState(false);
+
+    useEffect(()=>{
+      let live=true;
+      fetch(BENCHMARKS_URL)
+        .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+        .then(d=>{if(live)setList(d.benchmarks||[]);})
+        .catch(e=>{if(live)setErr(e.message);});
+      return()=>{live=false;};
+    },[]);
+
+    const bm=list.filter(b=>b.id===sel)[0];
+    function run(){
+      if(!bm)return;
+      setBusy(true);
+      // Yield first so the button can paint its running state.
+      setTimeout(()=>{setRows(convergence(bm));setBusy(false);},20);
+    }
+
+    const body={fontFamily:ui,fontSize:mb?13:14,lineHeight:1.7,color:C.textMuted,marginBottom:12};
+    const cell={fontFamily:ui,fontSize:mb?11.5:12.5,padding:mb?"7px 6px":"9px 10px",
+      borderBottom:"1px solid "+C.borderSoft,textAlign:"right"};
+
+    if(err)return h('div',{style:cardStyle(mb)},
+      h('div',{style:body},"Loss benchmarks unavailable (",err,"). The coin demo above is unaffected."));
+
+    return h('div',{style:cardStyle(mb)},
+      h('div',{style:Object.assign({},eyebrow,{fontSize:12,color:C.accent,marginBottom:8})},
+        "The same question, on a loss distribution"),
+      h('div',{style:body},
+        "A coin has one number to settle. A loss model has several, and they do not settle together. Pick a source-backed scenario and run it at four iteration counts, twelve times each: the table reports how far each statistic moves between identical runs."),
+      h('div',{style:{display:"grid",gridTemplateColumns:mb?"1fr":"2fr 1fr",gap:12,marginBottom:14}},
+        h('select',{value:sel,onChange:e=>{setSel(e.target.value);setRows(null);},
+          "aria-label":"Scenario",
+          style:{fontFamily:ui,fontSize:mb?14:13,background:C.bg,color:C.text,
+            border:"1px solid "+C.border,borderRadius:8,padding:"9px 10px",width:"100%"}},
+          h('option',{value:""},list.length?"Pick a scenario":"Loading\u2026"),
+          list.map(b=>h('option',{key:b.id,value:b.id},b.label))),
+        h('button',{onClick:run,disabled:!bm||busy,
+          style:{fontFamily:ui,fontSize:13,fontWeight:600,cursor:bm&&!busy?"pointer":"default",
+            padding:"10px 18px",borderRadius:8,border:"1px solid "+(bm&&!busy?C.accent:C.border),
+            background:bm&&!busy?C.accent:"transparent",color:bm&&!busy?"#fff":C.textDim}},
+          busy?"Running\u2026":"Run")),
+      rows?h('div',null,
+        h('div',{style:{overflowX:"auto"}},
+          h('table',{style:{width:"100%",borderCollapse:"collapse"}},
+            h('thead',null,h('tr',null,
+              ["Iterations","Mean","P50","P90","P99"].map((x,i)=>
+                h('th',{key:x,style:Object.assign({},cell,{textAlign:i?"right":"left",
+                  fontWeight:700,color:C.textDim,fontSize:10.5,letterSpacing:"0.07em",
+                  textTransform:"uppercase"})},x)))),
+            h('tbody',null,rows.map(r=>h('tr',{key:r.n},
+              h('td',{style:Object.assign({},cell,{textAlign:"left",fontWeight:600,color:C.text})},
+                r.n.toLocaleString()),
+              ["mean","p50","p90","p99"].map(k=>h('td',{key:k,
+                style:Object.assign({},cell,{color:r[k]==null?C.textDim:(r[k]>25?C.accent:C.textMuted),
+                  fontWeight:r[k]!=null&&r[k]>25?700:500})},
+                r[k]==null?"\u2014":"\u00b1"+r[k].toFixed(r[k]<10?1:0)+"%"))))))),
+        h('div',{style:{fontFamily:ui,fontSize:mb?12:12.5,lineHeight:1.7,color:C.textMuted,marginTop:12}},
+          "Read across a row: at that iteration count, this is how much each answer wandered between runs of the identical model. Every column shrinks as iterations grow — that part is the coin again. The part the coin cannot show you is why the columns differ. A mean uses every draw; a P99 is read off the worst one percent, so ten thousand iterations leave it about a hundred events to stand on, and the further into the tail you quote, the more iterations you owe the number.",
+          rows[2]&&rows[2].p90!=null?[" At 10,000 iterations this scenario's P90 still moves by roughly \u00b1",
+            rows[2].p90.toFixed(rows[2].p90<10?1:0),"% between runs, around a median of ",
+            money(rows[2].median.p90,bm.currency),"."]:null),
+        h('div',{style:{fontFamily:ui,fontSize:mb?11.5:12,lineHeight:1.6,color:C.textDim,marginTop:10}},
+          "Press Run again and the figures will move, sometimes enough to reorder the columns. Twelve repeats is a small sample, so each of these spreads is itself an estimate with its own noise \u2014 which is the same lesson one level up, and the reason a real convergence study runs far more of both. A P50 of zero shows as \u2014: this scenario sees fewer than one event in most years, so the median year has no loss at all and a percentage change in it means nothing.")
+      ):h('div',{style:{fontFamily:ui,fontSize:12.5,color:C.textDim}},
+        bm?"Twelve runs at each of four iteration counts. Takes a moment.":"Pick a scenario to run."));
+  }
+
+  function App(){
+    const mb=useIsMobile();
+    const[nIdx,setNIdx]=useState(3);
+    const[data,setData]=useState(()=>gen(NS[3]));
+    const n=NS[nIdx];
+    const onSlide=useCallback(e=>{const i=parseInt(e.target.value);setNIdx(i);setData(gen(NS[i]));},[]);
+    const again=useCallback(()=>{setData(gen(n));},[n]);
+    const pd=mb?16:24;
+    const prose={maxWidth:"none",fontFamily:ui,fontSize:mb?15:16,lineHeight:1.75,color:C.textMuted};
+
+    // 100vh inside the iframe is the frame's own height, which pins the page to
+    // whatever height the parent last set and leaves dead space under the content.
+    return h('div',{style:{minHeight:EMBEDDED?0:"100vh",background:C.bg,color:C.text}},
+
+      // ACT 1
+      !EMBEDDED&&h('div',{style:{maxWidth:1400,margin:"0 auto",padding:(mb?40:64)+"px "+pd+"px 0"}},
+        h(SLabel,{n:"1",label:"The Lesson",color:C.amber}),
+        h('h1',{style:{fontFamily:display,fontSize:mb?34:52,fontWeight:700,lineHeight:1.05,letterSpacing:"-0.02em",marginBottom:24,maxWidth:760,color:C.text}},
+          "Your First ",h('em',{style:{fontStyle:"italic",color:C.accent}},"Monte Carlo")),
+        h('div',{style:prose},
+          h('p',{style:{marginBottom:16}},"Every Monte Carlo model rests on one unglamorous fact: run a random process enough times and the aggregate stops behaving randomly. That is the law of large numbers. Any single trial is still a toss-up; the average of a hundred thousand of them is a measurement. A fair coin is the smallest honest version of this — one event, one known probability, nothing else in the way."),
+          h('p',null,"The tool below does exactly that. The line chart plots the share of heads after every flip, so you can watch one run wander and then settle. The histogram underneath runs the same experiment "+REP+" separate times and bins where each one finished — that is the spread you would have seen on a less lucky afternoon. Move the slider from 10 flips to 100,000 and watch both of them tighten."))),
+
+      // ACT 2
+      h('div',{style:{maxWidth:1400,margin:"0 auto",padding:(mb?32:48)+"px "+pd+"px 0"}},
+        h(SLabel,{n:"2",label:"The Tool"}),
+
+        // Controls
+        h('div',{style:Object.assign({},cardStyle(mb),{marginBottom:20})},
+          h('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}},
+            h('div',{style:Object.assign({},eyebrow,{fontSize:12,color:C.accent})},"Number of Flips"),
+            h('div',{style:{display:"flex",alignItems:"center",gap:14}},
+              h('div',{style:{fontFamily:display,fontSize:mb?26:32,fontWeight:700,lineHeight:1.1,color:C.text}},n.toLocaleString()),
+              h('button',{onClick:again,style:{padding:mb?"9px 16px":"10px 20px",background:C.accent,border:"1px solid "+C.accent,color:C.bg,borderRadius:999,fontFamily:ui,fontSize:12,fontWeight:600,cursor:"pointer",letterSpacing:"0.02em",transition:"background 0.12s ease, border-color 0.12s ease"},
+                onMouseEnter:e=>{e.currentTarget.style.background=C.text;e.currentTarget.style.borderColor=C.text;},
+                onMouseLeave:e=>{e.currentTarget.style.background=C.accent;e.currentTarget.style.borderColor=C.accent;}},"Flip Again"))),
+          h('input',{type:"range",min:0,max:NS.length-1,value:nIdx,onChange:onSlide,style:{width:"100%",marginBottom:8}}),
+          h('div',{style:{display:"flex",justifyContent:"space-between",fontFamily:ui,fontSize:9,fontWeight:600,color:C.textDim}},
+            ...NS.map((v,i)=>h('div',{key:i,style:{opacity:(TL[i]!==undefined||i===NS.length-1)?1:0,width:0,textAlign:"center"}},v>=1000?(v/1000)+"K":v)))),
+
+        // Result summary
+        h('div',{style:Object.assign({},cardStyle(mb,"18px 22px"),{marginBottom:20,borderLeft:"3px solid "+C.accent})},
+          h('div',{style:{display:"flex",alignItems:"baseline",gap:10,flexWrap:"wrap",marginBottom:8}},
+            h('span',{style:{fontFamily:display,fontSize:mb?22:28,fontWeight:700,color:C.accent}},data.totalHeads.toLocaleString()+" heads"),
+            h('span',{style:{fontFamily:ui,fontSize:mb?13:14,fontWeight:500,color:C.textMuted}},"out of "+n.toLocaleString()+" flips = "+(data.finalProp*100).toFixed(1)+"%")),
+          h('div',{style:{fontFamily:ui,fontSize:mb?13:14,color:C.textDim,lineHeight:1.6}},getInsight(n))),
+
+        // Proportion chart
+        h('div',{style:Object.assign({},cardStyle(mb,mb?"14px":"18px 22px"),{marginBottom:16})},
+          h(PropChart,{data:data.proportions,n:n,isMobile:mb})),
+
+        // Sampling distribution
+        h('div',{style:cardStyle(mb,mb?"14px":"18px 22px")},
+          h(SampHist,{sampling:data.sampling,finalProp:data.finalProp,n:n,isMobile:mb})),
+
+        // The same convergence question, asked of a loss model
+        h('div',{style:{marginTop:mb?16:20}},
+          h(LossConvergence,{mb:mb}))),
+
+      // ACT 3
+      h('div',{style:{maxWidth:1400,margin:"0 auto",padding:(mb?32:48)+"px "+pd+"px 0"}},
+        h(SLabel,{n:"3",label:"The Takeaway",color:C.sage}),
+        h('div',{style:prose},
+          h('p',{style:{marginBottom:16}},
+            data.proportions.length>1
+              ?"Nothing about the coin changed as you moved that slider. What changed is how much any one flip was allowed to matter. At 10 flips, a single head swings the result by ten points. At 10,000, it swings it by a hundredth of a point. The randomness is all still there — it just loses its grip on the average."
+              :"Run the tool above before reading on. Start at 10 flips, then drag to 10,000, and watch what stops moving."),
+          h('p',null,"Cyber risk quantification is this, with worse coins. Swap “heads” for “we get hit this year” and the flip becomes a frequency estimate. Give the event a loss range instead of one fixed outcome and you have the bones of a FAIR model. Run it ten thousand times and you get a distribution — a number with a range attached, which is the only kind anyone can actually budget against. Same machinery, much harder inputs.")),
+
+        h('div',{style:{height:mb?72:140}})));
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+  </script>
+</body>
+</html>
