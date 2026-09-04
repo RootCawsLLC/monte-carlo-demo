@@ -4,7 +4,7 @@ How many trials does it take before a Monte Carlo answer stops moving? A fair co
 ten flips to a hundred thousand, then the same question asked of a loss model, where the tail
 settles far more slowly than the average.
 
-**Live:** https://rootcawsllc.github.io/monte-carlo-demo/
+**Live:** https://rootcawsllc.github.io/monte-carlo-demo/ — when to use it, how to use it, and how to take the pattern into an organisation.
 
 ![The lab at 1,000 flips. On the left, a ladder of twelve flip counts with 1K selected, the run's heads count and share, and a verdict on how far a repeat run would move. On the right, the running share of heads on a logarithmic flip axis inside a shaded 95% band; a zoomed histogram of where 200 repeated runs finished, with a strip beneath showing how narrow that window is against 0–100%; and the loss-model study for a US financial-services data-breach scenario, a table of how far the average, median, 1-in-10 and 1-in-100 figures moved between twelve identical runs at four iteration counts](preview.png)
 
