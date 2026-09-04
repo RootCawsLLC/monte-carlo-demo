@@ -1,74 +1,73 @@
-# Your First Monte Carlo
+# Convergence Lab
 
-An interactive law-of-large-numbers demo: flip a fair coin anywhere from 10 to 100,000 times
-and watch the running proportion of heads converge on 50% while the run-to-run noise collapses.
+How many trials does it take before a Monte Carlo answer stops moving? A fair coin first, from
+ten flips to a hundred thousand, then the same question asked of a loss model, where the tail
+settles far more slowly than the average.
 
 **Live:** https://rootcawsllc.github.io/monte-carlo-demo/
 
-![The loss-convergence panel with a US financial-services data-breach scenario selected. A table gives four iteration counts against how far each statistic moved between twelve identical runs: at 100 iterations the mean swings ±70% and the P99 ±81%; by 50,000 the mean is down to ±2.8%. The P50 column reads em-dash throughout because the median year for this scenario has no loss event at all](preview.png)
+![The lab at 1,000 flips. On the left, a ladder of twelve flip counts with 1K selected, the run's heads count and share, and a verdict on how far a repeat run would move. On the right, the running share of heads on a logarithmic flip axis inside a shaded 95% band; a zoomed histogram of where 200 repeated runs finished, with a strip beneath showing how narrow that window is against 0–100%; and the loss-model study for a US financial-services data-breach scenario, a table of how far the average, median, 1-in-10 and 1-in-100 figures moved between twelve identical runs at four iteration counts](preview.png)
 
-Also embedded as the *Monte Carlo* tab of the risk lab on my portfolio:
-https://rootcawsllc.github.io/
+Also embedded as the *Convergence Lab* tab of the risk lab on my portfolio.
 
 ## What it shows
 
-Every Monte Carlo model rests on the same unglamorous fact: run a random process enough times and
-the aggregate stops behaving randomly. Any single trial is a toss-up; the average of a hundred
-thousand of them is a measurement. Swap "heads" for "we get hit this year", give the event a loss
-range instead of one fixed outcome, and the same machinery becomes a rough FAIR model.
-
-- **Running proportion chart** — plots heads ÷ flips after each flip (downsampled to 600 points),
-  over a shaded 95% band derived from the binomial standard error, `SE = 0.5/√n`.
-- **Sampling distribution** — runs the whole experiment 200 more times at the same `n` and bins
-  the results, so you can see where your single run landed inside the spread.
-- **Loss convergence** — the same question asked of a real loss model rather than a coin. Pick a
-  source-backed scenario, and it runs the compound-Poisson simulation the other risk tools use at
-  100, 1,000, 10,000 and 50,000 iterations, twelve times each, reporting how far the mean, P50, P90
-  and P99 move between identical runs.
+- **One run, flip by flip.** The share of heads after every flip, drawn on a log axis so the
+  early wander and the late settling get the same room. The shaded band is where 95% of fair-coin
+  runs sit at each flip count, from the binomial standard error `0.5/√n`.
+- **Two hundred runs, where they finished.** The whole experiment repeated 200 times at the same
+  flip count, keeping only the finishing share. The axis zooms to the window the finishes occupy,
+  and a strip underneath shows that window against the full 0–100% range, so the tightening is
+  visible in the labels rather than lost in an ever-thinner spike.
+- **The same question, asked of a loss model.** Pick a source-backed scenario and the tool runs
+  the compound-Poisson simulation the other risk-lab tools use at 100, 1,000, 10,000 and 50,000
+  iterations, twelve times each. Each cell reports how far that statistic moved between identical
+  runs as a share of its own value, with a bar so the columns can be compared at a glance.
 
 The third panel is the one that changes how you read the other tools. A coin has one number to
-settle. A loss model has several, and they do not settle together: a mean uses every draw, while a
-P99 is read off the worst one percent, so 10,000 iterations leave it roughly a hundred events to
-stand on. The further into the tail you quote, the more iterations you owe the number — and "we ran
-10,000 simulations" stops being a reassurance and becomes a question about which statistic you are
-quoting.
+settle. A loss model has several, and they do not settle together: an average is built from every
+simulated year, while a 1-in-100 figure is read off the worst one percent, so ten thousand
+iterations leave it about a hundred years to stand on. The further into the tail you quote, the
+more iterations you owe the number.
 
 ## Build
 
-Single self-contained `index.html` — React 18 via UMD CDN, no build step, no dependencies.
-Styled to match the palette and type system of the RootCaws design system: powder
-rose surfaces, warm ink, rose accent, Fraunces for display and Inter for UI.
+Single self-contained `index.html`: React 18 via UMD CDN, no build step, no dependencies. Styled in
+the RootCaws palette: powder-rose surfaces, warm ink, rose accent, Fraunces for display type and
+Inter for everything else.
 
 ## Running locally
+
+Serve the directory with any static server so the relative fetch of `risk-benchmarks.json`
+works, for example:
 
 ```bash
 python -m http.server 8000
 ```
 
-Then open http://localhost:8000. The loss-convergence panel fetches the scenario corpus over HTTPS;
-if that is unreachable it says so and the coin demo is unaffected.
+Then open http://localhost:8000. If the benchmarks file is unreachable the loss panel says so and
+the coin is unaffected.
 
 ## Honest limits
 
-A training exercise, not a production model — a fair coin with independent flips. Real risk events
+A training exercise, not a production model: a fair coin with independent flips. Real risk events
 are neither independent nor identically distributed. The principle still holds: more observations,
 less noise, better estimates.
 
 **Twelve repeats is a small sample, and the loss table says so.** Each spread in that table is
-itself an estimate with its own noise, which is the same lesson one level up. Press Run twice and
-the figures move, sometimes enough to reorder the columns — so read the table for the shape of the
-problem, not as a measurement of any particular statistic's convergence rate. A real convergence
-study runs far more repeats at far more rungs.
+itself an estimate with its own noise, which is the same lesson one level up. Run it twice and the
+cells move, sometimes enough to reorder them, so read the table for the shape of the problem rather
+than as a measurement of any statistic's convergence rate.
 
 **The ladder stops at 50,000 for browser reasons, not statistical ones.** Twelve runs at each of
-four rungs is about a fifth of a second; extending it far enough to settle a P99 properly would
-not be.
+four rungs takes well under a second; extending it far enough to settle a 1-in-100 figure
+properly would not.
 
 ## Attribution
 
 Loss scenarios come from [risk-benchmarks](https://github.com/RootCawsLLC/risk-benchmarks), which
 derives them from [RiskShard](https://github.com/raviaxo/RiskShard) by
-[raviaxo](https://github.com/raviaxo), AGPL-3.0.
+[raviaxo](https://github.com/raviaxo), AGPL-3.0. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## License
 
