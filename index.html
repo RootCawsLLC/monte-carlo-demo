@@ -111,6 +111,22 @@
     .note p{font-size:14px;color:var(--ink-2);line-height:1.65}
     .notes.embedded{padding-top:8px;padding-bottom:24px}
 
+    .guide{padding:28px 0 8px}
+    .guide h2{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:28px 0 12px;padding-bottom:10px;border-bottom:1px solid var(--soft-line)}
+    .guide h2:first-of-type{margin-top:0}
+    .guide-toc{display:flex;flex-wrap:wrap;gap:.35rem .9rem;margin:0 0 18px;font-size:13px}
+    .guide-toc a{color:var(--rose)}
+    .guide-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width:699px){.guide-pair{grid-template-columns:1fr}}
+    .guide-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+    .guide-box.use{border-left:3px solid var(--sage)}
+    .guide-box.dont{border-left:3px solid var(--rose)}
+    .guide-box h3{font-family:var(--display);font-weight:600;font-size:18px;margin:0 0 8px;letter-spacing:-.01em}
+    .guide-box ul,.guide ol{margin:0;padding-left:1.15rem}
+    .guide li{font-size:14px;color:var(--ink-2);line-height:1.65;margin:.4rem 0}
+    .guide li b{color:var(--ink);font-weight:600}
+    .guide-close{font-size:14px;color:var(--ink-2);line-height:1.65;margin:10px 0 0}
+
     @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
   </style>
 </head>
@@ -420,6 +436,37 @@
         el('p',null,"Cyber risk quantification is this exercise with harder coins. Swap heads for an incident year, give each event a loss range instead of a fixed outcome, and the compound model in the other tools is what you get. The iteration count you need is set by the statistic you intend to quote: the tail always needs more than the middle.")));
   }
 
+  function Guide(){
+    return el('section',{className:"wrap guide","aria-label":"How to use this"},
+      el('nav',{className:"guide-toc","aria-label":"On this page"},
+        el('a',{href:"#when"},"When to use it"),
+        el('a',{href:"#how"},"How to use it"),
+        el('a',{href:"#org"},"Take it into your org")),
+      el('h2',{id:"when"},"When and where to use it"),
+      el('div',{className:"guide-pair"},
+        el('div',{className:"guide-box use"},el('h3',null,"Use it when"),
+          el('ul',null,
+            el('li',null,"Someone is quoting a 1-in-100 loss from a short simulation and you need to show why that figure still moves."),
+            el('li',null,"You are setting an iteration policy for a quantification programme and need the reason to be visible, not asserted."),
+            el('li',null,"A GRC team has to feel the difference between a coin, which has one number to settle, and a loss model, whose statistics do not settle at the same speed."))),
+        el('div',{className:"guide-box dont"},el('h3',null,"Do not use it when"),
+          el('ul',null,
+            el('li',null,"You need a risk number for your organisation. The coin is a lesson. The loss panel uses a teaching scenario, not your data."),
+            el('li',null,"You intend to quote the far tail and think ten thousand years are enough. This page exists to show they often are not.")))),
+      el('h2',{id:"how"},"How to use it"),
+      el('ol',null,
+        el('li',null,el('b',null,"Climb. "),"Twelve rungs from ten flips to a hundred thousand. Watch one run wander, then settle, on a log axis so the early noise and the late calm get equal room."),
+        el('li',null,el('b',null,"Repeat. "),"The same experiment two hundred times, keeping only where each run finished. That cloud is the honest error bar on the number in the panel to the left."),
+        el('li',null,el('b',null,"Transfer. "),"Pick a source-backed scenario and run it at four iteration counts, twelve times each. The average settles quickly. The one-in-a-hundred year does not, and the table shows the gap.")),
+      el('h2',{id:"org"},"Take it into your organisation"),
+      el('ol',null,
+        el('li',null,el('b',null,"Name the statistic before you run anything. "),"Mean, P90, and 1-in-100 are different debts. The iteration count is set by the one you will quote."),
+        el('li',null,el('b',null,"Repeat the run. "),"If the quoted figure moves enough to change the decision, you do not have enough years yet."),
+        el('li',null,el('b',null,"Put the repeat-spread in the paper with the number. "),"A board that sees how far a 1-in-100 figure moved between identical runs will ask better questions than one that sees a single point."),
+        el('li',null,el('b',null,"Take the policy, not the file. "),"This lab is a lesson. Write the iteration rule into the quantification procedure and enforce it there.")),
+      el('p',{className:"guide-close"},"The notes below are the honest limits. Read them before you quote a figure."));
+  }
+
   // ------------------------------------------------------------------- app
   function App(){
     const narrow=useNarrow(900);
@@ -433,6 +480,7 @@
         el('div',{className:"kicker"},"RootCaws · Risk lab"),
         el('h1',null,"Convergence ",el('em',null,"Lab")),
         el('p',{className:"deck"},"A fair coin is the smallest model there is: one event, one known probability, nothing else in the way. Flip it ten times, then a hundred thousand, and watch how many flips it takes before the answer stops moving. Then ask the same question of a loss model, where the tail settles far more slowly than the average.")),
+      !EMBEDDED&&el(Guide),
       el('div',{className:"wrap bench"},
         el(Controls,{n,setN,run,onAgain:()=>setTick(t=>t+1)}),
         el('section',{"aria-label":"Results"},
